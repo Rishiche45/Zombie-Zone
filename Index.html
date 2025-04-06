@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Zombie Reload – The Last Survivor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Press Start 2P', cursive;
+            background-color: #1a1a2e; /* Dark blue/purple background */
+            color: #e0e1dd; /* Off-white text */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden; /* Prevent scrollbars */
+            touch-action: none; /* Disable browser default touch actions like pinch-zoom */
+        }
+
+        h1 {
+            color: #f03a47; /* Neon red */
+            text-shadow: 0 0 5px #f03a47, 0 0 10px #f03a47;
+            margin-bottom: 5px;
+            font-size: 1.8rem; /* Adjust size for responsiveness */
+            text-align: center;
+        }
+
+        p.slogan {
+            color: #4fc3f7; /* Neon blue */
+            text-shadow: 0 0 3px #4fc3f7;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        #gameContainer {
+            position: relative; /* For positioning UI elements */
+            width: 95%;
+            max-width: 800px; /* Max width for larger screens */
+            aspect-ratio: 16 / 9; /* Maintain aspect ratio */
+            margin: auto;
+        }
+
+        canvas {
+            display: block;
+            background-color: #0f111a; /* Slightly darker canvas background */
+            border: 3px solid #4fc3f7; /* Neon blue border */
+            box-shadow: 0 0 15px #4fc3f7;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        /* UI Elements Styling */
+        .ui-element {
+            position: absolute;
+            background-color: rgba(15, 17, 26, 0.7); /* Semi-transparent dark bg */
+            padding: 8px 12px;
+            border-radius: 5px;
+            border: 1px solid #4fc3f7;
+            font-size: 0.8rem; /* Smaller font for UI */
+            text-shadow: 1px 1px 2px #000;
+            white-space: nowrap;
+        }
+
+        #scoreDisplay {
+            top: 10px;
+            left: 10px;
+            color: #f9a825; /* Yellow/Gold score */
+        }
+
+        #ammoDisplay {
+            bottom: 10px;
+            left: 10px;
+            color: #ffffff;
+        }
+
+        #reloadIndicator {
+            bottom: 10px;
+            left: 150px; /* Position next to ammo */
+            color: #f03a47; /* Red when reloading */
+            display: none; /* Hidden by default */
+        }
+
+        #healthDisplay {
+            top: 10px;
+            right: 10px;
+            color: #76ff03; /* Neon green health */
+        }
+
+        #healthBarOuter {
+             position: absolute;
+             top: 35px; /* Position below health text */
+             right: 10px;
+             width: 100px;
+             height: 10px;
+             background-color: rgba(255, 0, 0, 0.5); /* Red background */
+             border: 1px solid #e0e1dd;
+             border-radius: 3px;
+             overflow: hidden;
+         }
+
+         #healthBarInner {
+             height: 100%;
+             background-color: #76ff03; /* Neon green fill */
+             width: 100%; /* Start full */
+             transition: width 0.2s linear; /* Smooth transition */
+         }
+
+        #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            color: #f03a47;
+            display: none; /* Hidden initially */
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            z-index: 10;
+        }
+
+        #gameOverScreen h2 {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            text-shadow: 0 0 10px #f03a47;
+        }
+
+        #gameOverScreen p {
+            font-size: 1.2rem;
+            margin-bottom: 25px;
+            color: #e0e1dd;
+        }
+
+        #restartButton {
+            padding: 15px 30px;
+            font-size: 1rem;
+            color: #1a1a2e;
+            background-color: #4fc3f7; /* Neon blue */
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            text-shadow: none;
+            box-shadow: 0 0 10px #4fc3f7, inset 0 0 5px rgba(255, 255, 255, 0.5);
+            transition: background-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        #restartButton:hover {
+            background-color: #81d4fa; /* Lighter blue */
+            box-shadow: 0 0 15px #4fc3f7, inset 0 0 8px rgba(255, 255, 255, 0.7);
+        }
+
+        /* Simple Reload Button for Mobile */
+        #reloadButton {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            padding: 15px;
+            font-size: 1.2rem;
+            color: #1a1a2e;
+            background-color: #f9a825; /* Yellow/Gold */
+            border: none;
+            border-radius: 50%; /* Circular button */
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            box-shadow: 0 0 10px #f9a825, inset 0 0 5px rgba(255, 255, 255, 0.5);
+            z-index: 5; /* Ensure it's above canvas */
+            display: none; /* Hidden by default, shown via JS for touch devices */
+        }
+         #reloadButton:active {
+             background-color: #fbc02d; /* Slightly lighter yellow */
+         }
+
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            h1 { font-size: 1.5rem; }
+            p.slogan { font-size: 0.7rem; }
+            .ui-element { font-size: 0.6rem; padding: 5px 8px; }
+            #reloadIndicator { left: 100px; }
+            #gameOverScreen h2 { font-size: 2rem; }
+            #gameOverScreen p { font-size: 1rem; }
+            #restartButton { padding: 12px 25px; font-size: 0.9rem; }
+            #healthBarOuter { width: 80px; }
+             #reloadButton { padding: 12px; font-size: 1rem; }
+        }
+         @media (max-width: 400px) {
+             h1 { font-size: 1.2rem; }
+             p.slogan { font-size: 0.6rem; }
+             .ui-element { font-size: 0.5rem; }
+             #reloadIndicator { left: 80px; }
+         }
+
+    </style>
+</head>
+<body>
+
+    <h1>Zombie Reload</h1>
+    <p class="slogan">Reload Fast. Shoot Faster. Stay Alive.</p>
+
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="scoreDisplay" class="ui-element">Score: 0</div>
+        <div id="ammoDisplay" class="ui-element">Ammo: 10 / 10</div>
+        <div id="reloadIndicator" class="ui-element">RELOADING</div>
+        <div id="healthDisplay" class="ui-element">Health: 100</div>
+        <div id="healthBarOuter">
+            <div id="healthBarInner"></div>
+        </div>
+
+        <button id="reloadButton">R</button>
+
+        <div id="gameOverScreen">
+            <h2>GAME OVER</h2>
+            <p id="finalScore">Your Score: 0</p>
+            <button id="restartButton">RESTART</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Game Setup ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gameContainer = document.getElementById('gameContainer');
+
+        // UI Elements
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const ammoDisplay = document.getElementById('ammoDisplay');
+        const reloadIndicator = document.getElementById('reloadIndicator');
+        const healthDisplay = document.getElementById('healthDisplay');
+        const healthBarInner = document.getElementById('healthBarInner');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const finalScoreDisplay = document.getElementById('finalScore');
+        const restartButton = document.getElementById('restartButton');
+        const reloadButton = document.getElementById('reloadButton'); // Mobile reload button
+
+        let canvasWidth, canvasHeight;
+        let scaleFactor = 1; // For scaling game elements
+
+        // --- Game State Variables ---
+        let score = 0;
+        let playerHealth = 100;
+        let maxHealth = 100;
+        let currentAmmo = 10;
+        let maxAmmo = 10;
+        let isReloading = false;
+        let reloadTime = 1500; // milliseconds (1.5 seconds)
+        let gameOver = false;
+        let gameRunning = true; // To pause the game loop on game over
+        let animationFrameId;
+
+        // --- Game Objects ---
+        let player = {};
+        let bullets = [];
+        let zombies = [];
+        let mousePos = { x: 0, y: 0 };
+
+        // --- Timing & Spawning ---
+        let zombieSpawnRate = 2000; // milliseconds (2 seconds)
+        let lastZombieSpawn = 0;
+        let difficultyIncreaseRate = 10000; // Increase difficulty every 10 seconds
+        let lastDifficultyIncrease = 0;
+        let minSpawnRate = 500; // Minimum spawn rate (0.5 seconds)
+        let spawnRateDecrease = 100; // How much to decrease spawn rate each time
+
+        // --- Asset SVGs (Simple Placeholders) ---
+        const playerSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="#4fc3f7"/><rect x="45" y="10" width="10" height="40" fill="#e0e1dd"/></svg>`;
+        const zombieSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="35" fill="#76ff03"/><circle cx="40" cy="40" r="5" fill="#1a1a2e"/><circle cx="60" cy="40" r="5" fill="#1a1a2e"/><rect x="30" y="65" width="40" height="10" rx="5" fill="#f03a47"/></svg>`;
+
+        let playerImage = new Image();
+        let zombieImage = new Image();
+        playerImage.src = 'data:image/svg+xml;base64,' + btoa(playerSVG);
+        zombieImage.src = 'data:image/svg+xml;base64,' + btoa(zombieSVG);
+
+
+        // --- Utility Functions ---
+        function resizeCanvas() {
+            // Make canvas fill container while maintaining aspect ratio
+            const containerWidth = gameContainer.clientWidth;
+            const containerHeight = gameContainer.clientHeight;
+
+            canvas.width = 1280; // Fixed internal resolution width
+            canvas.height = 720; // Fixed internal resolution height
+
+            canvasWidth = canvas.width;
+            canvasHeight = canvas.height;
+
+            // Reset player position on resize
+            player = {
+                x: canvasWidth / 2,
+                y: canvasHeight - 50 * scaleFactor, // Position near bottom center
+                radius: 25 * scaleFactor, // Scaled size
+                angle: 0
+            };
+        }
+
+        function getMousePos(evt) {
+            const rect = canvas.getBoundingClientRect();
+            // Scale mouse coordinates to match internal canvas resolution
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            let clientX, clientY;
+
+            if (evt.touches && evt.touches.length > 0) {
+                clientX = evt.touches[0].clientX;
+                clientY = evt.touches[0].clientY;
+            } else {
+                clientX = evt.clientX;
+                clientY = evt.clientY;
+            }
+
+            mousePos = {
+                x: (clientX - rect.left) * scaleX,
+                y: (clientY - rect.top) * scaleY
+            };
+        }
+
+         function isTouchDevice() {
+             return ('ontouchstart' in window) || navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0;
+         }
+
+        // --- Game Logic Functions ---
+        function updatePlayer() {
+            // Aiming: Calculate angle towards mouse/touch
+            const dx = mousePos.x - player.x;
+            const dy = mousePos.y - player.y;
+            player.angle = Math.atan2(dy, dx);
+        }
+
+        function shoot() {
+            if (currentAmmo > 0 && !isReloading && !gameOver) {
+                const bulletSpeed = 10 * scaleFactor;
+                const bullet = {
+                    x: player.x + Math.cos(player.angle) * (player.radius + 5), // Start just outside player
+                    y: player.y + Math.sin(player.angle) * (player.radius + 5),
+                    radius: 5 * scaleFactor,
+                    speedX: Math.cos(player.angle) * bulletSpeed,
+                    speedY: Math.sin(player.angle) * bulletSpeed,
+                    color: '#f03a47' // Neon red bullets
+                };
+                bullets.push(bullet);
+                currentAmmo--;
+                updateAmmoDisplay();
+
+                // Simple recoil effect (optional)
+                // player.x -= Math.cos(player.angle) * 2;
+                // player.y -= Math.sin(player.angle) * 2;
+            } else if (currentAmmo <= 0 && !isReloading && !gameOver) {
+                startReload(); // Auto-reload if trying to shoot empty
+            }
+        }
+
+        function startReload() {
+            if (isReloading || currentAmmo === maxAmmo || gameOver) return; // Don't reload if already reloading, full, or game over
+
+            isReloading = true;
+            reloadIndicator.style.display = 'block';
+            updateAmmoDisplay(); // Show reloading state in ammo display
+
+            setTimeout(() => {
+                currentAmmo = maxAmmo;
+                isReloading = false;
+                reloadIndicator.style.display = 'none';
+                updateAmmoDisplay();
+            }, reloadTime);
+        }
+
+        function spawnZombie() {
+            const size = (Math.random() * 15 + 25) * scaleFactor; // Random size between 25 and 40
+            const speed = (Math.random() * 1 + 1) * scaleFactor; // Random speed between 1 and 2
+            let spawnX, spawnY;
+
+            // Randomly spawn from top or sides
+            const side = Math.floor(Math.random() * 3); // 0: top, 1: left, 2: right
+            if (side === 0) { // Top
+                spawnX = Math.random() * canvasWidth;
+                spawnY = -size;
+            } else if (side === 1) { // Left
+                spawnX = -size;
+                spawnY = Math.random() * (canvasHeight * 0.75); // Spawn in upper 3/4
+            } else { // Right
+                spawnX = canvasWidth + size;
+                spawnY = Math.random() * (canvasHeight * 0.75);
+            }
+
+            zombies.push({
+                x: spawnX,
+                y: spawnY,
+                radius: size,
+                speed: speed,
+                health: 100 // Basic health
+            });
+        }
+
+        function updateZombies() {
+            zombies.forEach((zombie, index) => {
+                // Move towards player
+                const dx = player.x - zombie.x;
+                const dy = player.y - zombie.y;
+                const angle = Math.atan2(dy, dx);
+                zombie.x += Math.cos(angle) * zombie.speed;
+                zombie.y += Math.sin(angle) * zombie.speed;
+
+                // Check collision with player
+                const dist = Math.hypot(player.x - zombie.x, player.y - zombie.y);
+                if (dist < player.radius + zombie.radius) {
+                    playerHit(10); // Zombie deals 10 damage
+                    zombies.splice(index, 1); // Remove zombie
+                }
+            });
+        }
+
+        function updateBullets() {
+            bullets.forEach((bullet, bulletIndex) => {
+                bullet.x += bullet.speedX;
+                bullet.y += bullet.speedY;
+
+                // Remove bullets that go off-screen
+                if (bullet.x < 0 || bullet.x > canvasWidth || bullet.y < 0 || bullet.y > canvasHeight) {
+                    bullets.splice(bulletIndex, 1);
+                    return; // Use return to skip collision check for this removed bullet
+                }
+
+                // Check collision with zombies
+                zombies.forEach((zombie, zombieIndex) => {
+                    // Need to check if bullet still exists before checking collision
+                     if (!bullets[bulletIndex]) return;
+
+                    const dist = Math.hypot(bullet.x - zombie.x, bullet.y - zombie.y);
+                    if (dist < bullet.radius + zombie.radius) {
+                        // Zombie hit
+                        zombies.splice(zombieIndex, 1); // Remove zombie (simple kill for now)
+                        bullets.splice(bulletIndex, 1); // Remove bullet
+                        score += 10; // Increase score
+                        updateScoreDisplay();
+                        // Potential: Add zombie health logic here instead of instant kill
+                    }
+                });
+            });
+        }
+
+        function playerHit(damage) {
+            if (gameOver) return;
+            playerHealth -= damage;
+            playerHealth = Math.max(0, playerHealth); // Ensure health doesn't go below 0
+            updateHealthDisplay();
+            if (playerHealth <= 0) {
+                triggerGameOver();
+            }
+        }
+
+        function triggerGameOver() {
+            gameOver = true;
+            gameRunning = false; // Stop the game loop updates
+            cancelAnimationFrame(animationFrameId); // Stop the loop entirely
+            gameOverScreen.style.display = 'flex';
+            finalScoreDisplay.textContent = `Your Score: ${score}`;
+        }
+
+        function increaseDifficulty(currentTime) {
+             if (zombieSpawnRate > minSpawnRate) {
+                 zombieSpawnRate -= spawnRateDecrease;
+                 zombieSpawnRate = Math.max(minSpawnRate, zombieSpawnRate); // Clamp to minimum
+                 console.log("Difficulty Increased! New Spawn Rate:", zombieSpawnRate);
+             }
+             // Future: Increase zombie speed, health, introduce new types etc.
+             lastDifficultyIncrease = currentTime;
+         }
+
+        // --- Drawing Functions ---
+        function drawPlayer() {
+            ctx.save();
+            ctx.translate(player.x, player.y);
+            ctx.rotate(player.angle + Math.PI / 2); // Rotate SVG to face mouse (+90 degrees offset if needed)
+            ctx.drawImage(playerImage, -player.radius, -player.radius, player.radius * 2, player.radius * 2);
+            ctx.restore();
+
+             // Draw aiming line (optional visual aid)
+             /*
+             ctx.beginPath();
+             ctx.moveTo(player.x, player.y);
+             ctx.lineTo(mousePos.x, mousePos.y);
+             ctx.strokeStyle = 'rgba(79, 195, 247, 0.5)'; // Light blue transparent
+             ctx.lineWidth = 2;
+             ctx.stroke();
+             */
+        }
+
+        function drawBullets() {
+            bullets.forEach(bullet => {
+                ctx.beginPath();
+                ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
+                ctx.fillStyle = bullet.color;
+                ctx.shadowColor = bullet.color; // Neon glow
+                ctx.shadowBlur = 10;
+                ctx.fill();
+                ctx.shadowBlur = 0; // Reset shadow blur
+            });
+        }
+
+        function drawZombies() {
+            zombies.forEach(zombie => {
+                 ctx.save();
+                 // Optional: Make zombies slightly rotate or wobble
+                 // ctx.translate(zombie.x, zombie.y);
+                 // ctx.rotate(Math.random() * 0.1 - 0.05); // Small random rotation
+                 ctx.drawImage(zombieImage, zombie.x - zombie.radius, zombie.y - zombie.radius, zombie.radius * 2, zombie.radius * 2);
+                 ctx.restore();
+            });
+        }
+
+        // --- UI Update Functions ---
+        function updateScoreDisplay() {
+            scoreDisplay.textContent = `Score: ${score}`;
+        }
+
+        function updateAmmoDisplay() {
+            if (isReloading) {
+                ammoDisplay.textContent = `RELOADING...`;
+            } else {
+                ammoDisplay.textContent = `Ammo: ${currentAmmo} / ${maxAmmo}`;
+            }
+        }
+
+        function updateHealthDisplay() {
+            healthDisplay.textContent = `Health: ${playerHealth}`;
+            const healthPercentage = (playerHealth / maxHealth) * 100;
+            healthBarInner.style.width = `${healthPercentage}%`;
+             // Change health bar color based on percentage
+             if (healthPercentage > 60) {
+                 healthBarInner.style.backgroundColor = '#76ff03'; // Green
+             } else if (healthPercentage > 30) {
+                 healthBarInner.style.backgroundColor = '#f9a825'; // Yellow
+             } else {
+                 healthBarInner.style.backgroundColor = '#f03a47'; // Red
+             }
+        }
+
+        // --- Game Loop ---
+        function gameLoop(timestamp) {
+            if (!gameRunning) return; // Exit if game is paused or over
+
+            // Clear canvas
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+            // Update game objects
+            updatePlayer();
+            updateBullets();
+            updateZombies();
+
+            // Spawn new zombies based on timer
+            if (timestamp - lastZombieSpawn > zombieSpawnRate) {
+                spawnZombie();
+                lastZombieSpawn = timestamp;
+            }
+
+             // Increase difficulty based on timer
+             if (timestamp - lastDifficultyIncrease > difficultyIncreaseRate) {
+                 increaseDifficulty(timestamp);
+             }
+
+            // Draw game objects
+            drawPlayer();
+            drawBullets();
+            drawZombies();
+
+            // Request next frame
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // --- Initialization ---
+        function initGame() {
+            // Reset game state
+            score = 0;
+            playerHealth = maxHealth;
+            currentAmmo = maxAmmo;
+            isReloading = false;
+            gameOver = false;
+            gameRunning = true;
+            bullets = [];
+            zombies = [];
+            zombieSpawnRate = 2000; // Reset spawn rate
+            lastZombieSpawn = 0;
+            lastDifficultyIncrease = 0;
+
+            // Update UI
+            updateScoreDisplay();
+            updateAmmoDisplay();
+            updateHealthDisplay();
+            reloadIndicator.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+
+            // Initial resize and player setup
+            resizeCanvas(); // Call resizeCanvas to set initial size and player position
+
+             // Show reload button only on touch devices
+             if (isTouchDevice()) {
+                 reloadButton.style.display = 'block';
+             } else {
+                 reloadButton.style.display = 'none';
+             }
+
+            // Start the game loop
+            // Clear any previous loop
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+            }
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        // --- Event Listeners ---
+        window.addEventListener('resize', resizeCanvas);
+
+        // Mouse/Touch aiming and shooting
+        canvas.addEventListener('mousemove', getMousePos);
+        canvas.addEventListener('touchmove', (e) => {
+             e.preventDefault(); // Prevent page scrolling
+             getMousePos(e);
+        }, { passive: false });
+
+        canvas.addEventListener('mousedown', shoot);
+        canvas.addEventListener('touchstart', (e) => {
+             e.preventDefault(); // Prevent double tap zoom, etc.
+             getMousePos(e); // Update aim position on initial touch
+             shoot();
+        }, { passive: false });
+
+
+        // Keyboard Reload
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'r' || e.key === 'R') {
+                startReload();
+            }
+        });
+
+         // Mobile Reload Button
+         reloadButton.addEventListener('click', startReload);
+         reloadButton.addEventListener('touchstart', (e) => {
+             e.preventDefault(); // Prevent click event firing too
+             startReload();
+         }, { passive: false });
+
+        // Restart Button
+        restartButton.addEventListener('click', initGame);
+         restartButton.addEventListener('touchstart', (e) => {
+             e.preventDefault();
+             initGame();
+         }, { passive: false });
+
+
+        // --- Start Game on Load ---
+        window.onload = () => {
+            // Ensure images are loaded before starting (though SVG data URIs load quickly)
+            let imagesLoaded = 0;
+            const totalImages = 2;
+            const onImageLoad = () => {
+                imagesLoaded++;
+                if (imagesLoaded === totalImages) {
+                    initGame();
+                }
+            };
+            playerImage.onload = onImageLoad;
+            zombieImage.onload = onImageLoad;
+
+             // Handle cases where images might already be cached/loaded
+             if (playerImage.complete) onImageLoad();
+             if (zombieImage.complete) onImageLoad();
+        };
+
+    </script>
+
+</body>
+</html>
